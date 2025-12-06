@@ -1,65 +1,253 @@
-import Image from "next/image";
+// src/app/page.tsx
+"use client";
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+type Account = {
+    id: string;
+    name: string;
+    type: "checking" | "savings" | "credit-card";
+    balance: number;
+};
+
+type Transaction = {
+    id: string;
+    date: string;
+    description: string;
+    category: string;
+    amount: number;
+};
+
+const accounts: Account[] = [
+    {
+        id: "checking",
+        name: "Checking - Main",
+        type: "checking",
+        balance: 2450.32,
+    },
+    {
+        id: "savings",
+        name: "Savings",
+        type: "savings",
+        balance: 5300.0,
+    },
+    {
+        id: "credit-card",
+        name: "Credit Card",
+        type: "credit-card",
+        balance: -320.5,
+    },
+];
+
+const recentTransactions: Transaction[] = [
+    {
+        id: "tx-1",
+        date: "2025-11-30",
+        description: "Kroger groceries",
+        category: "Groceries",
+        amount: -86.45,
+    },
+    {
+        id: "tx-2",
+        date: "2025-11-29",
+        description: "Uber to airport",
+        category: "Transportation",
+        amount: -24.99,
+    },
+    {
+        id: "tx-3",
+        date: "2025-11-27",
+        description: "Restaurant dinner",
+        category: "Eating Out",
+        amount: -54.0,
+    },
+    {
+        id: "tx-4",
+        date: "2025-11-26",
+        description: "Paycheck",
+        category: "Income",
+        amount: 2100.0,
+    },
+];
+
+function formatCurrency(amount: number) {
+    return amount.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+    });
+}
+
+export default function DashboardPage() {
+    const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const totalIncome = recentTransactions
+        .filter((t) => t.amount > 0)
+        .reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = recentTransactions
+        .filter((t) => t.amount < 0)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    return (
+        <main className="min-h-screen bg-slate-950 text-slate-50">
+            <div className="mx-auto max-w-6xl px-4 py-8">
+                {/* Page header */}
+                <header className="mb-6">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                        Personal Finance
+                    </p>
+                    <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                        Personal Finance Dashboard
+                    </h1>
+                    <p className="mt-1 text-sm text-slate-400">
+                        Simple overview of your accounts and recent activity.
+                    </p>
+                </header>
+
+                {/* Top summary cards */}
+                <section className="mb-8 grid gap-4 sm:grid-cols-3">
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                            Total Balance
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold">
+                            {formatCurrency(totalBalance)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Across all linked accounts
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">
+                            Total Income
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold text-emerald-300">
+                            {formatCurrency(totalIncome)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">Recent inflows</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-rose-400">
+                            Total Expenses
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold text-rose-300">
+                            {formatCurrency(totalExpenses)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">Recent outflows</p>
+                    </div>
+                </section>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Accounts card */}
+                    <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                        <div className="mb-4 flex items-center justify-between gap-2">
+                            <h2 className="text-sm font-semibold text-slate-100">
+                                Accounts
+                            </h2>
+                            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                {accounts.length} total
+              </span>
+                        </div>
+
+                        <div className="space-y-3">
+                            {accounts.map((acc) => (
+                                <div
+                                    key={acc.id}
+                                    className="flex items-center justify-between rounded-lg border border-slate-800/70 bg-slate-950/70 px-3 py-3"
+                                >
+                                    <div>
+                                        <p className="text-sm font-medium text-slate-100">
+                                            {acc.name}
+                                        </p>
+                                        <p className="text-xs uppercase tracking-wide text-slate-500">
+                                            {acc.type}
+                                        </p>
+                                    </div>
+                                    <p
+                                        className={`text-sm font-semibold ${
+                                            acc.balance < 0 ? "text-rose-300" : "text-emerald-300"
+                                        }`}
+                                    >
+                                        {formatCurrency(acc.balance)}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Recent transactions table */}
+                    <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                        <div className="mb-4 flex items-center justify-between gap-2">
+                            <h2 className="text-sm font-semibold text-slate-100">
+                                Recent Transactions
+                            </h2>
+                            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                Last {recentTransactions.length} records
+              </span>
+                        </div>
+
+                        <div className="max-h-80 overflow-auto rounded-lg border border-slate-800/70">
+                            <table className="min-w-full text-sm">
+                                <thead className="bg-slate-950/90 backdrop-blur">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                                        Date
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                                        Description
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                                        Category
+                                    </th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-400">
+                                        Amount
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {recentTransactions.map((tx) => (
+                                    <tr
+                                        key={tx.id}
+                                        className="border-t border-slate-800/70 hover:bg-slate-800/60"
+                                    >
+                                        <td className="whitespace-nowrap px-4 py-3 text-slate-200">
+                                            {new Date(tx.date).toLocaleDateString("en-US", {
+                                                month: "short",
+                                                day: "numeric",
+                                                year: "numeric",
+                                            })}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-100">
+                                            {tx.description}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-300">
+                                            {tx.category}
+                                        </td>
+                                        <td
+                                            className={`whitespace-nowrap px-4 py-3 text-right font-medium ${
+                                                tx.amount < 0 ? "text-rose-300" : "text-emerald-300"
+                                            }`}
+                                        >
+                                            {tx.amount < 0 ? "-" : "+"}
+                                            {formatCurrency(Math.abs(tx.amount))}
+                                        </td>
+                                    </tr>
+                                ))}
+
+                                {recentTransactions.length === 0 && (
+                                    <tr>
+                                        <td
+                                            colSpan={4}
+                                            className="px-4 py-6 text-center text-slate-500"
+                                        >
+                                            No transactions yet. Add one to get started.
+                                        </td>
+                                    </tr>
+                                )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    );
 }
