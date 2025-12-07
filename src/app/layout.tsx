@@ -29,7 +29,8 @@ export default function RootLayout({
             className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-50`}
         >
         <MainHeader />
-        {children}
+        {/* Give content a bit of space under the sticky header */}
+        <div className="pt-2">{children}</div>
         </body>
         </html>
     );
