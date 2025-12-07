@@ -2,70 +2,12 @@
 "use client";
 
 import { useMemo, useState, FormEvent } from "react";
+import { useFinance } from "@/lib/finance-store";
 
 type TransactionType = "income" | "expense";
 
-type Transaction = {
-    id: string;
-    date: string; // yyyy-mm-dd
-    payee: string;
-    category: string;
-    account: string;
-    amount: number; // positive number
-    type: TransactionType;
-};
-
-const INITIAL_TRANSACTIONS: Transaction[] = [
-    {
-        id: "1",
-        date: "2025-11-01",
-        payee: "Kroger",
-        category: "Groceries",
-        account: "Checking",
-        amount: 82.35,
-        type: "expense",
-    },
-    {
-        id: "2",
-        date: "2025-11-02",
-        payee: "United Airlines Payroll",
-        category: "Salary",
-        account: "Checking",
-        amount: 1850,
-        type: "income",
-    },
-    {
-        id: "3",
-        date: "2025-11-03",
-        payee: "Starbucks",
-        category: "Eating Out",
-        account: "Credit Card",
-        amount: 6.75,
-        type: "expense",
-    },
-    {
-        id: "4",
-        date: "2025-11-04",
-        payee: "Rent",
-        category: "Housing",
-        account: "Checking",
-        amount: 1200,
-        type: "expense",
-    },
-    {
-        id: "5",
-        date: "2025-11-05",
-        payee: "Amazon",
-        category: "Shopping",
-        account: "Credit Card",
-        amount: 54.99,
-        type: "expense",
-    },
-];
-
-const accounts = ["Checking", "Savings", "Credit Card"] as const;
-const accountFilterOptions = ["All accounts", ...accounts] as const;
-const types = ["All", "Income", "Expense"] as const;
+const accountOptions = ["All accounts", "Checking", "Savings", "Credit Card"] as const;
+const typeOptions = ["All", "Income", "Expense"] as const;
 
 function formatCurrency(amount: number) {
     return amount.toLocaleString("en-US", {
@@ -74,49 +16,212 @@ function formatCurrency(amount: number) {
     });
 }
 
-type NewTxForm = {
+/* ---------- Add Transaction Modal ---------- */
+
+type AddTransactionInput = {
     date: string;
-    type: TransactionType;
-    amount: string; // keep as string for the input
     payee: string;
     category: string;
-    account: (typeof accounts)[number] | "";
+    account: string;
+    amount: number;
+    type: TransactionType;
 };
 
-export default function TransactionsPage() {
-    // 🔹 main transactions state (starts with mock data)
-    const [transactions, setTransactions] =
-        useState<Transaction[]>(INITIAL_TRANSACTIONS);
+type AddTransactionModalProps = {
+    open: boolean;
+    onClose: () => void;
+    onSave: (tx: AddTransactionInput) => void;
+};
 
-    // 🔹 filters
-    const [accountFilter, setAccountFilter] =
-        useState<(typeof accountFilterOptions)[number]>("All accounts");
-    const [typeFilter, setTypeFilter] = useState<(typeof types)[number]>("All");
-    const [search, setSearch] = useState("");
-
-    // 🔹 modal + form state
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTx, setNewTx] = useState<NewTxForm>({
+function AddTransactionModal({ open, onClose, onSave }: AddTransactionModalProps) {
+    const [form, setForm] = useState<AddTransactionInput>({
         date: new Date().toISOString().slice(0, 10),
-        type: "expense",
-        amount: "",
         payee: "",
         category: "",
-        account: "",
+        account: "Checking",
+        amount: 0,
+        type: "expense",
     });
-    const [formError, setFormError] = useState<string | null>(null);
+
+    if (!open) return null;
+
+    function handleChange(
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) {
+        const { name, value } = e.target;
+
+        if (name === "amount") {
+            setForm((prev) => ({
+                ...prev,
+                amount: Number(value),
+            }));
+            return;
+        }
+
+        setForm((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    }
+
+    function handleSubmit(e: FormEvent) {
+        e.preventDefault();
+        if (!form.payee.trim() || !form.category.trim() || !form.amount) return;
+
+        onSave(form);
+        onClose();
+        // reset payee/category/amount for next time
+        setForm((prev) => ({
+            ...prev,
+            payee: "",
+            category: "",
+            amount: 0,
+        }));
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur">
+            <div className="w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+                <h2 className="text-lg font-semibold text-slate-50">
+                    Add transaction
+                </h2>
+                <p className="mt-1 text-xs text-slate-400">
+                    Basic manual entry for now – later we can sync with a real API.
+                </p>
+
+                <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-sm">
+                    <div className="flex gap-3">
+                        <div className="flex-1">
+                            <label className="mb-1 block text-xs font-medium text-slate-300">
+                                Date
+                            </label>
+                            <input
+                                type="date"
+                                name="date"
+                                value={form.date}
+                                onChange={handleChange}
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="mb-1 block text-xs font-medium text-slate-300">
+                                Type
+                            </label>
+                            <select
+                                name="type"
+                                value={form.type}
+                                onChange={handleChange}
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            >
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-300">
+                            Payee
+                        </label>
+                        <input
+                            type="text"
+                            name="payee"
+                            value={form.payee}
+                            onChange={handleChange}
+                            placeholder="Kroger, Rent, Paycheck..."
+                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-300">
+                            Category
+                        </label>
+                        <input
+                            type="text"
+                            name="category"
+                            value={form.category}
+                            onChange={handleChange}
+                            placeholder="Groceries, Salary, Housing..."
+                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                    </div>
+
+                    <div className="flex gap-3">
+                        <div className="flex-1">
+                            <label className="mb-1 block text-xs font-medium text-slate-300">
+                                Account
+                            </label>
+                            <select
+                                name="account"
+                                value={form.account}
+                                onChange={handleChange}
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            >
+                                <option value="Checking">Checking</option>
+                                <option value="Savings">Savings</option>
+                                <option value="Credit Card">Credit Card</option>
+                            </select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="mb-1 block text-xs font-medium text-slate-300">
+                                Amount (USD)
+                            </label>
+                            <input
+                                type="number"
+                                name="amount"
+                                value={form.amount || ""}
+                                onChange={handleChange}
+                                step="0.01"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
+                        >
+                            Save transaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+/* ---------- Transactions Page ---------- */
+
+export default function TransactionsPage() {
+    const { transactions, addTransaction } = useFinance();
+    const [accountFilter, setAccountFilter] =
+        useState<(typeof accountOptions)[number]>("All accounts");
+    const [typeFilter, setTypeFilter] =
+        useState<(typeof typeOptions)[number]>("All");
+    const [search, setSearch] = useState("");
+    const [modalOpen, setModalOpen] = useState(false);
 
     const filtered = useMemo(() => {
         return transactions.filter((tx) => {
             if (accountFilter !== "All accounts" && tx.account !== accountFilter) {
                 return false;
             }
+
             if (typeFilter === "Income" && tx.type !== "income") return false;
             if (typeFilter === "Expense" && tx.type !== "expense") return false;
 
             if (!search.trim()) return true;
-
             const term = search.toLowerCase();
+
             return (
                 tx.payee.toLowerCase().includes(term) ||
                 tx.category.toLowerCase().includes(term) ||
@@ -137,57 +242,9 @@ export default function TransactionsPage() {
         return { inflow, outflow, net: inflow - outflow };
     }, [filtered]);
 
-    function handleOpenModal() {
-        setFormError(null);
-        setNewTx({
-            date: new Date().toISOString().slice(0, 10),
-            type: "expense",
-            amount: "",
-            payee: "",
-            category: "",
-            account: "",
-        });
-        setIsModalOpen(true);
-    }
-
-    function handleSubmit(e: FormEvent) {
-        e.preventDefault();
-        setFormError(null);
-
-        // basic validation
-        if (!newTx.date || !newTx.payee.trim() || !newTx.category.trim()) {
-            setFormError("Please fill date, payee, and category.");
-            return;
-        }
-        if (!newTx.account) {
-            setFormError("Please select an account.");
-            return;
-        }
-
-        const numericAmount = Number(newTx.amount);
-        if (!numericAmount || numericAmount <= 0 || Number.isNaN(numericAmount)) {
-            setFormError("Amount must be a positive number.");
-            return;
-        }
-
-        const tx: Transaction = {
-            id: `${Date.now()}`,
-            date: newTx.date,
-            payee: newTx.payee.trim(),
-            category: newTx.category.trim(),
-            account: newTx.account,
-            amount: numericAmount,
-            type: newTx.type,
-        };
-
-        // prepend to list so newest shows at top
-        setTransactions((prev) => [tx, ...prev]);
-        setIsModalOpen(false);
-    }
-
     return (
         <main className="min-h-screen bg-slate-950 text-slate-50">
-            <div className="mx-auto max-w-6xl px-4 py-8">
+            <div className="mx-auto max-w-5xl px-4 py-8">
                 {/* Page header */}
                 <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -201,7 +258,7 @@ export default function TransactionsPage() {
 
                     <button
                         type="button"
-                        onClick={handleOpenModal}
+                        onClick={() => setModalOpen(true)}
                         className="inline-flex items-center justify-center rounded-lg border border-emerald-500 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 shadow-sm hover:bg-emerald-500/20"
                     >
                         + Add transaction
@@ -249,12 +306,12 @@ export default function TransactionsPage() {
                             value={accountFilter}
                             onChange={(e) =>
                                 setAccountFilter(
-                                    e.target.value as (typeof accountFilterOptions)[number]
+                                    e.target.value as (typeof accountOptions)[number]
                                 )
                             }
                             className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 sm:max-w-xs"
                         >
-                            {accountFilterOptions.map((acc) => (
+                            {accountOptions.map((acc) => (
                                 <option key={acc} value={acc}>
                                     {acc}
                                 </option>
@@ -264,11 +321,11 @@ export default function TransactionsPage() {
                         <select
                             value={typeFilter}
                             onChange={(e) =>
-                                setTypeFilter(e.target.value as (typeof types)[number])
+                                setTypeFilter(e.target.value as (typeof typeOptions)[number])
                             }
                             className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 sm:max-w-xs"
                         >
-                            {types.map((t) => (
+                            {typeOptions.map((t) => (
                                 <option key={t} value={t}>
                                     {t}
                                 </option>
@@ -359,169 +416,14 @@ export default function TransactionsPage() {
                 </section>
             </div>
 
-            {/* 🔹 Add Transaction Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
-                        <div className="mb-4 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-base font-semibold text-slate-50">
-                                    Add Transaction
-                                </h2>
-                                <p className="mt-1 text-xs text-slate-400">
-                                    This is local-only for now (no backend yet).
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsModalOpen(false)}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-600 text-slate-400 hover:bg-slate-800"
-                                aria-label="Close"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        {formError && (
-                            <p className="mb-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
-                                {formError}
-                            </p>
-                        )}
-
-                        <form onSubmit={handleSubmit} className="space-y-3 text-sm">
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-300">
-                                        Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={newTx.date}
-                                        onChange={(e) =>
-                                            setNewTx((prev) => ({ ...prev, date: e.target.value }))
-                                        }
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-300">
-                                        Type
-                                    </label>
-                                    <select
-                                        value={newTx.type}
-                                        onChange={(e) =>
-                                            setNewTx((prev) => ({
-                                                ...prev,
-                                                type: e.target.value as TransactionType,
-                                            }))
-                                        }
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                    >
-                                        <option value="expense">Expense</option>
-                                        <option value="income">Income</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-300">
-                                    Amount
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={newTx.amount}
-                                    onChange={(e) =>
-                                        setNewTx((prev) => ({ ...prev, amount: e.target.value }))
-                                    }
-                                    placeholder="0.00"
-                                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                    required
-                                />
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Enter a positive amount. We&apos;ll treat it as{" "}
-                                    {newTx.type === "expense" ? "money out." : "money in."}
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-300">
-                                    Payee
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newTx.payee}
-                                    onChange={(e) =>
-                                        setNewTx((prev) => ({ ...prev, payee: e.target.value }))
-                                    }
-                                    placeholder="Who did you pay or receive from?"
-                                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-300">
-                                    Category
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newTx.category}
-                                    onChange={(e) =>
-                                        setNewTx((prev) => ({ ...prev, category: e.target.value }))
-                                    }
-                                    placeholder="Groceries, Rent, Salary, etc."
-                                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-300">
-                                    Account
-                                </label>
-                                <select
-                                    value={newTx.account}
-                                    onChange={(e) =>
-                                        setNewTx((prev) => ({
-                                            ...prev,
-                                            account: e.target.value as (typeof accounts)[number],
-                                        }))
-                                    }
-                                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                    required
-                                >
-                                    <option value="">Select an account</option>
-                                    {accounts.map((acc) => (
-                                        <option key={acc} value={acc}>
-                                            {acc}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="mt-4 flex justify-end gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
-                                >
-                                    Save transaction
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <AddTransactionModal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onSave={(input) => {
+                    // assumes useFinance exposes addTransaction(input)
+                    addTransaction(input);
+                }}
+            />
         </main>
     );
 }

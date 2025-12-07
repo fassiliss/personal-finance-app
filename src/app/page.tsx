@@ -1,72 +1,8 @@
 // src/app/page.tsx
 "use client";
 
-type Account = {
-    id: string;
-    name: string;
-    type: "checking" | "savings" | "credit-card";
-    balance: number;
-};
-
-type Transaction = {
-    id: string;
-    date: string;
-    description: string;
-    category: string;
-    amount: number;
-};
-
-const accounts: Account[] = [
-    {
-        id: "checking",
-        name: "Checking - Main",
-        type: "checking",
-        balance: 2450.32,
-    },
-    {
-        id: "savings",
-        name: "Savings",
-        type: "savings",
-        balance: 5300.0,
-    },
-    {
-        id: "credit-card",
-        name: "Credit Card",
-        type: "credit-card",
-        balance: -320.5,
-    },
-];
-
-const recentTransactions: Transaction[] = [
-    {
-        id: "tx-1",
-        date: "2025-11-30",
-        description: "Kroger groceries",
-        category: "Groceries",
-        amount: -86.45,
-    },
-    {
-        id: "tx-2",
-        date: "2025-11-29",
-        description: "Uber to airport",
-        category: "Transportation",
-        amount: -24.99,
-    },
-    {
-        id: "tx-3",
-        date: "2025-11-27",
-        description: "Restaurant dinner",
-        category: "Eating Out",
-        amount: -54.0,
-    },
-    {
-        id: "tx-4",
-        date: "2025-11-26",
-        description: "Paycheck",
-        category: "Income",
-        amount: 2100.0,
-    },
-];
+import { useFinance } from "@/lib/finance-store";
+import { useMemo } from "react";
 
 function formatCurrency(amount: number) {
     return amount.toLocaleString("en-US", {
@@ -76,13 +12,34 @@ function formatCurrency(amount: number) {
 }
 
 export default function DashboardPage() {
-    const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const totalIncome = recentTransactions
-        .filter((t) => t.amount > 0)
-        .reduce((sum, t) => sum + t.amount, 0);
-    const totalExpenses = recentTransactions
-        .filter((t) => t.amount < 0)
-        .reduce((sum, t) => sum + t.amount, 0);
+    const { accounts, transactions } = useFinance();
+
+    const { totalBalance, totalIncome, totalExpenses, recentTransactions } =
+        useMemo(() => {
+            const totalBalance = accounts.reduce(
+                (sum, acc) => sum + acc.balance,
+                0,
+            );
+
+            const totalIncome = transactions
+                .filter((t) => t.type === "income")
+                .reduce((sum, t) => sum + t.amount, 0);
+
+            const totalExpenses = transactions
+                .filter((t) => t.type === "expense")
+                .reduce((sum, t) => sum + t.amount, 0);
+
+            const recentTransactions = [...transactions]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .slice(0, 5);
+
+            return {
+                totalBalance,
+                totalIncome,
+                totalExpenses: -totalExpenses, // show as negative
+                recentTransactions,
+            };
+        }, [accounts, transactions]);
 
     return (
         <main className="min-h-screen bg-slate-950 text-slate-50">
@@ -163,7 +120,9 @@ export default function DashboardPage() {
                                     </div>
                                     <p
                                         className={`text-sm font-semibold ${
-                                            acc.balance < 0 ? "text-rose-300" : "text-emerald-300"
+                                            acc.balance < 0
+                                                ? "text-rose-300"
+                                                : "text-emerald-300"
                                         }`}
                                     >
                                         {formatCurrency(acc.balance)}
@@ -192,7 +151,7 @@ export default function DashboardPage() {
                                         Date
                                     </th>
                                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
-                                        Description
+                                        Payee
                                     </th>
                                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
                                         Category
@@ -216,18 +175,20 @@ export default function DashboardPage() {
                                             })}
                                         </td>
                                         <td className="px-4 py-3 text-slate-100">
-                                            {tx.description}
+                                            {tx.payee}
                                         </td>
                                         <td className="px-4 py-3 text-slate-300">
                                             {tx.category}
                                         </td>
                                         <td
                                             className={`whitespace-nowrap px-4 py-3 text-right font-medium ${
-                                                tx.amount < 0 ? "text-rose-300" : "text-emerald-300"
+                                                tx.type === "income"
+                                                    ? "text-emerald-300"
+                                                    : "text-rose-300"
                                             }`}
                                         >
-                                            {tx.amount < 0 ? "-" : "+"}
-                                            {formatCurrency(Math.abs(tx.amount))}
+                                            {tx.type === "income" ? "+" : "-"}
+                                            {formatCurrency(tx.amount)}
                                         </td>
                                     </tr>
                                 ))}

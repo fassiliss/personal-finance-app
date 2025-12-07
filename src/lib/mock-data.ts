@@ -1,61 +1,71 @@
 // src/lib/mock-data.ts
 import type { Account, Transaction } from "./types";
 
-export const accounts: Account[] = [
+export const initialAccounts: Account[] = [
     {
-        id: "acc-checking",
+        id: "checking",
         name: "Checking - Main",
         type: "checking",
-        currency: "USD",
         balance: 2450.32,
     },
     {
-        id: "acc-savings",
+        id: "savings",
         name: "Savings",
         type: "savings",
-        currency: "USD",
         balance: 5300.0,
     },
     {
-        id: "acc-amex",
+        id: "credit-card",
         name: "Credit Card",
         type: "credit-card",
-        currency: "USD",
-        balance: -320.5, // negative = you owe
+        balance: -320.5,
     },
 ];
 
-export const transactions: Transaction[] = [
+export const initialTransactions: Transaction[] = [
     {
-        id: "tx-1",
-        date: "2025-12-01",
-        accountId: "acc-checking",
-        description: "Kroger groceries",
+        id: "1",
+        date: "2025-11-01",
+        payee: "Kroger",
         category: "Groceries",
-        amount: -86.45,
+        account: "Checking",
+        amount: 82.35,
+        type: "expense",
     },
     {
-        id: "tx-2",
-        date: "2025-11-30",
-        accountId: "acc-checking",
-        description: "Uber to airport",
-        category: "Transportation",
-        amount: -24.99,
+        id: "2",
+        date: "2025-11-02",
+        payee: "United Airlines Payroll",
+        category: "Salary",
+        account: "Checking",
+        amount: 1850,
+        type: "income",
     },
     {
-        id: "tx-3",
-        date: "2025-11-28",
-        accountId: "acc-amex",
-        description: "Restaurant dinner",
+        id: "3",
+        date: "2025-11-03",
+        payee: "Starbucks",
         category: "Eating Out",
-        amount: -54.0,
+        account: "Credit Card",
+        amount: 6.75,
+        type: "expense",
     },
     {
-        id: "tx-4",
-        date: "2025-11-27",
-        accountId: "acc-checking",
-        description: "Paycheck",
-        category: "Income",
-        amount: 2100.0,
+        id: "4",
+        date: "2025-11-04",
+        payee: "Rent",
+        category: "Housing",
+        account: "Checking",
+        amount: 1200,
+        type: "expense",
+    },
+    {
+        id: "5",
+        date: "2025-11-05",
+        payee: "Amazon",
+        category: "Shopping",
+        account: "Credit Card",
+        amount: 54.99,
+        type: "expense",
     },
 ];
