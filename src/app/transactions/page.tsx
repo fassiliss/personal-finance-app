@@ -244,7 +244,7 @@ export default function TransactionsPage() {
 
     return (
         <main className="min-h-screen bg-slate-950 text-slate-50">
-            <div className="mx-auto max-w-5xl px-4 py-8">
+            <div className="mx-auto max-w-6xl px-4 py-8">
                 {/* Page header */}
                 <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
