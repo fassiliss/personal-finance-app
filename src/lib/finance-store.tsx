@@ -18,10 +18,9 @@ export type Transaction = TransactionInput & {
     id: string;
 };
 
-// 👇 Add a "type" field so your dashboard's {acc.type} works
 export type Account = {
     id: string;
-    name: string;      // "Checking", "Savings", "Credit Card"
+    name: string; // "Checking", "Savings", "Credit Card"
     type: "bank" | "card";
     balance: number;
 };
@@ -33,6 +32,8 @@ type FinanceState = {
 
 type FinanceContextValue = FinanceState & {
     addTransaction: (input: TransactionInput) => void;
+    updateTransaction: (id: string, input: TransactionInput) => void;
+    deleteTransaction: (id: string) => void;
     resetAll: () => void;
 };
 
@@ -53,7 +54,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const [state, setState] = useState<FinanceState>(defaultState);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // 1) Load from localStorage on client AFTER hydration
+    // Load from localStorage on client after hydration
     useEffect(() => {
         if (typeof window === "undefined") return;
 
@@ -72,13 +73,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
                 }
             }
         } catch {
-            // ignore and keep defaultState
+            // ignore, keep default
         } finally {
             setIsLoaded(true);
         }
     }, []);
 
-    // 2) Persist to localStorage once we are loaded
+    // Persist to localStorage once loaded
     useEffect(() => {
         if (!isLoaded) return;
         try {
@@ -113,13 +114,76 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         });
     };
 
+    const updateTransaction = (id: string, input: TransactionInput) => {
+        setState((prev) => {
+            const existing = prev.transactions.find((t) => t.id === id);
+            if (!existing) return prev;
+
+            const updatedAccounts = prev.accounts.map((acc) => {
+                let balance = acc.balance;
+
+                // revert old effect
+                if (acc.name === existing.account) {
+                    const oldDelta =
+                        existing.type === "income"
+                            ? existing.amount
+                            : -existing.amount;
+                    balance -= oldDelta;
+                }
+
+                // apply new effect
+                if (acc.name === input.account) {
+                    const newDelta =
+                        input.type === "income" ? input.amount : -input.amount;
+                    balance += newDelta;
+                }
+
+                return { ...acc, balance };
+            });
+
+            const updatedTransactions = prev.transactions.map((t) =>
+                t.id === id ? { ...t, ...input } : t,
+            );
+
+            return {
+                accounts: updatedAccounts,
+                transactions: updatedTransactions,
+            };
+        });
+    };
+
+    const deleteTransaction = (id: string) => {
+        setState((prev) => {
+            const existing = prev.transactions.find((t) => t.id === id);
+            if (!existing) return prev;
+
+            const updatedAccounts = prev.accounts.map((acc) => {
+                if (acc.name !== existing.account) return acc;
+
+                const delta =
+                    existing.type === "income"
+                        ? existing.amount
+                        : -existing.amount;
+
+                // undo the original delta
+                return { ...acc, balance: acc.balance - delta };
+            });
+
+            const remaining = prev.transactions.filter((t) => t.id !== id);
+
+            return {
+                accounts: updatedAccounts,
+                transactions: remaining,
+            };
+        });
+    };
+
     const resetAll = () => {
         setState(defaultState);
     };
 
-    // 3) Avoid hydration mismatch: don't render children until we know the client state
     if (!isLoaded) {
-        return null; // optional: put a small loading spinner here
+        return null;
     }
 
     return (
@@ -127,6 +191,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
             value={{
                 ...state,
                 addTransaction,
+                updateTransaction,
+                deleteTransaction,
                 resetAll,
             }}
         >
