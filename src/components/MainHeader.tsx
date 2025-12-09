@@ -1,100 +1,110 @@
+// src/components/MainHeader.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo } from "react";
+import { useFinance } from "@/lib/finance-store";
 
-const navItems = [
-    { href: "/", label: "Dashboard" },
-    { href: "/transactions", label: "Transactions" },
-];
+function formatCurrency(amount: number) {
+    return amount.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+    });
+}
 
 export default function MainHeader() {
     const pathname = usePathname();
-    const [open, setOpen] = useState(false);
+    const { accounts } = useFinance();
 
-    const isActive = (href: string) => {
-        if (href === "/") return pathname === "/";
-        return pathname.startsWith(href);
-    };
+    const totalBalance = useMemo(
+        () => accounts.reduce((sum, acc) => sum + acc.balance, 0),
+        [accounts],
+    );
+
+    const navItems = [
+        { href: "/", label: "Dashboard" },
+        { href: "/transactions", label: "Transactions" },
+    ];
 
     return (
-        <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-            <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+            <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
                 {/* Left: logo + app name */}
-                <Link
-                    href="/"
-                    className="flex items-center gap-2"
-                    onClick={() => setOpen(false)}
-                >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-sm font-bold text-emerald-300">
-                        PF
+                <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-sm font-semibold text-emerald-300">
+                        $
                     </div>
-                    <div className="flex flex-col">
-            <span className="text-sm font-semibold leading-tight">
-              Personal Finance
-            </span>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
-              Track money with clarity
-            </span>
+                    <div className="leading-tight">
+                        <p className="text-sm font-semibold text-slate-50">
+                            Personal Finance
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                            Local demo — no bank connections
+                        </p>
                     </div>
-                </Link>
-
-                {/* Desktop nav */}
-                <div className="hidden items-center gap-6 sm:flex">
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`text-sm font-medium transition ${
-                                isActive(item.href)
-                                    ? "text-emerald-300"
-                                    : "text-slate-300 hover:text-emerald-200"
-                            }`}
-                        >
-                            {item.label}
-                        </Link>
-                    ))}
                 </div>
 
-                {/* Mobile menu button */}
-                <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 p-1.5 text-slate-200 hover:border-emerald-500 hover:text-emerald-300 sm:hidden"
-                    onClick={() => setOpen((prev) => !prev)}
-                    aria-label="Toggle navigation"
-                >
-                    <span className="sr-only">Open main menu</span>
-                    {/* Simple hamburger / close icon */}
-                    <div className="space-y-1">
-                        <span className="block h-0.5 w-5 bg-current"></span>
-                        <span className="block h-0.5 w-5 bg-current"></span>
-                        <span className="block h-0.5 w-5 bg-current"></span>
-                    </div>
-                </button>
-            </nav>
-
-            {/* Mobile nav panel */}
-            {open && (
-                <div className="border-t border-slate-800 bg-slate-950/95 px-4 py-3 sm:hidden">
-                    <div className="flex flex-col gap-2">
-                        {navItems.map((item) => (
+                {/* Center: nav */}
+                <nav className="hidden gap-1 rounded-full border border-slate-800 bg-slate-950/80 p-1 text-xs sm:flex">
+                    {navItems.map((item) => {
+                        const active =
+                            item.href === "/"
+                                ? pathname === "/"
+                                : pathname.startsWith(item.href);
+                        return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`rounded-md px-2 py-1.5 text-sm font-medium ${
-                                    isActive(item.href)
-                                        ? "bg-emerald-500/10 text-emerald-300"
-                                        : "text-slate-200 hover:bg-slate-800/80"
-                                }`}
-                                onClick={() => setOpen(false)}
+                                className={[
+                                    "rounded-full px-3 py-1 transition-colors",
+                                    active
+                                        ? "bg-slate-800 text-slate-50"
+                                        : "text-slate-400 hover:text-slate-100",
+                                ].join(" ")}
                             >
                                 {item.label}
                             </Link>
-                        ))}
+                        );
+                    })}
+                </nav>
+
+                {/* Right: total balance */}
+                <div className="flex items-center gap-2">
+                    <div className="hidden flex-col items-end sm:flex">
+            <span className="text-[10px] uppercase tracking-wide text-slate-500">
+              Total balance
+            </span>
+                        <span className="text-xs font-semibold text-slate-100">
+              {formatCurrency(totalBalance)}
+            </span>
                     </div>
+
+                    {/* Mobile nav pills (icons only, optional) */}
+                    <nav className="flex gap-1 sm:hidden">
+                        {navItems.map((item) => {
+                            const active =
+                                item.href === "/"
+                                    ? pathname === "/"
+                                    : pathname.startsWith(item.href);
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={[
+                                        "rounded-full px-2 py-1 text-[11px]",
+                                        active
+                                            ? "bg-slate-800 text-slate-50"
+                                            : "text-slate-400 hover:text-slate-100",
+                                    ].join(" ")}
+                                >
+                                    {item.label}
+                                </Link>
+                            );
+                        })}
+                    </nav>
                 </div>
-            )}
+            </div>
         </header>
     );
 }
