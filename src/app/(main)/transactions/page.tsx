@@ -675,7 +675,7 @@ export default function TransactionsPage() {
     };
 
     const accountOptions = useMemo(
-        () => ["All accounts", ...account_ids.map((a) => a.name)],
+        () => ["All accounts", ...accounts.map((a) => a.name)],
         [accounts],
     );
 
