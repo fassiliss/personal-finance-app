@@ -101,7 +101,7 @@ function transactionsToCSV(transactions: Transaction[]): string {
         tx.date,
         escapeCSV(tx.payee),
         escapeCSV(tx.category),
-        escapeCSV(tx.account),
+        escapeCSV(tx.account_id),
         tx.amount.toFixed(2),
         tx.type,
     ]);
@@ -171,7 +171,7 @@ function ImportPreviewModal({ open, preview, errors, onClose, onConfirm }: Impor
                                     <td className="px-3 py-2 text-slate-300">{tx.date}</td>
                                     <td className="px-3 py-2 text-slate-100">{tx.payee}</td>
                                     <td className="px-3 py-2 text-slate-300">{tx.category}</td>
-                                    <td className="px-3 py-2 text-slate-300">{tx.account}</td>
+                                    <td className="px-3 py-2 text-slate-300">{tx.account_id}</td>
                                     <td className={`px-3 py-2 text-right font-medium ${tx.type === "income" ? "text-emerald-300" : "text-rose-300"}`}>
                                         {formatCurrency(tx.amount)}
                                     </td>
