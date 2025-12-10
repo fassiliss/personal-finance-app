@@ -320,7 +320,7 @@ export default function ImportExportPage() {
             const date = values[dateIdx]?.trim();
             const payee = values[payeeIdx]?.trim();
             const category = categoryIdx !== -1 ? values[categoryIdx]?.trim() : "Uncategorized";
-            const account = accountIdx !== -1 ? values[accountIdx]?.trim() : accounts[0]?.name || "Checking";
+            const account = accountIdx !== -1 ? values[accountIdx]?.trim() : accounts[0]?.id || "Checking";
             const amountStr = values[amountIdx]?.trim().replace(/[$,]/g, "");
             const typeStr = typeIdx !== -1 ? values[typeIdx]?.trim().toLowerCase() : "";
 
@@ -365,7 +365,7 @@ export default function ImportExportPage() {
                 date,
                 payee,
                 category: category || "Uncategorized",
-                account: account || accounts[0]?.name || "Checking",
+                account_id: account || accounts[0]?.id || "Checking",
                 amount,
                 type,
             });
