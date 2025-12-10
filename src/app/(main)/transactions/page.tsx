@@ -8,10 +8,10 @@ import React, {
     FormEvent,
 } from "react";
 import {
-    useFinance,
+    useSupabaseFinance,
     Transaction,
     TransactionInput,
-} from "@/lib/finance-store";
+} from "@/lib/supabase-finance-store";
 
 type TransactionType = "income" | "expense";
 
@@ -635,7 +635,7 @@ export default function TransactionsPage() {
         addTransaction,
         updateTransaction,
         deleteTransaction,
-    } = useFinance();
+    } = useSupabaseFinance();
 
     const [accountFilter, setAccountFilter] = useState<string>("All accounts");
     const [typeFilter, setTypeFilter] = useState<(typeof typeOptions)[number]>("All");

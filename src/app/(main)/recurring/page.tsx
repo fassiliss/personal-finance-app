@@ -1,8 +1,8 @@
-// src/app/recurring/page.tsx
+// src/app/(main)/recurring/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useFinance, RecurringTransaction, RecurringTransactionInput, RecurrenceFrequency } from "@/lib/finance-store";
+import React, { useState } from "react";
+import { useSupabaseFinance, RecurringTransaction, RecurringInput, RecurrenceFrequency } from "@/lib/supabase-finance-store";
 
 function formatCurrency(amount: number) {
     return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -96,64 +96,59 @@ const SUGGESTED_RECURRING = [
     { payee: "Netflix", category: "Subscriptions", type: "expense" as const },
     { payee: "Spotify", category: "Subscriptions", type: "expense" as const },
     { payee: "Electric Bill", category: "Utilities", type: "expense" as const },
-    { payee: "Internet", category: "Utilities", type: "expense" as const },
-    { payee: "Phone Bill", category: "Utilities", type: "expense" as const },
-    { payee: "Car Payment", category: "Transportation", type: "expense" as const },
-    { payee: "Insurance", category: "Insurance", type: "expense" as const },
-    { payee: "Gym Membership", category: "Health", type: "expense" as const },
 ];
 
 type RecurringModalProps = {
     open: boolean;
     recurring?: RecurringTransaction | null;
-    accounts: { name: string }[];
+    accounts: { id: string; name: string }[];
     onClose: () => void;
-    onSave: (input: RecurringTransactionInput) => void;
+    onSave: (input: RecurringInput) => void;
 };
 
 function RecurringModal({ open, recurring, accounts, onClose, onSave }: RecurringModalProps) {
     const today = new Date().toISOString().slice(0, 10);
 
-    const [form, setForm] = useState<RecurringTransactionInput>({
+    const [form, setForm] = useState<RecurringInput>({
         payee: "",
         category: "",
-        account: accounts[0]?.name ?? "",
+        account_id: accounts[0]?.id ?? "",
         amount: 0,
         type: "expense",
         frequency: "monthly",
-        startDate: today,
-        nextDueDate: today,
-        isActive: true,
+        start_date: today,
+        next_due_date: today,
+        is_active: true,
     });
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (!open) return;
         if (recurring) {
             setForm({
                 payee: recurring.payee,
                 category: recurring.category,
-                account: recurring.account,
+                account_id: recurring.account_id,
                 amount: recurring.amount,
                 type: recurring.type,
                 frequency: recurring.frequency,
-                startDate: recurring.startDate,
-                nextDueDate: recurring.nextDueDate,
-                isActive: recurring.isActive,
+                start_date: recurring.start_date,
+                next_due_date: recurring.next_due_date,
+                is_active: recurring.is_active,
             });
         } else {
             setForm({
                 payee: "",
                 category: "",
-                account: accounts[0]?.name ?? "",
+                account_id: accounts[0]?.id ?? "",
                 amount: 0,
                 type: "expense",
                 frequency: "monthly",
-                startDate: today,
-                nextDueDate: today,
-                isActive: true,
+                start_date: today,
+                next_due_date: today,
+                is_active: true,
             });
         }
-    }, [open, recurring, accounts]);
+    }, [open, recurring, accounts, today]);
 
     if (!open) return null;
 
@@ -161,7 +156,7 @@ function RecurringModal({ open, recurring, accounts, onClose, onSave }: Recurrin
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!form.payee.trim() || !form.category.trim() || form.amount <= 0 || !form.account) return;
+        if (!form.payee.trim() || !form.category.trim() || form.amount <= 0 || !form.account_id) return;
         onSave(form);
         onClose();
     }
@@ -185,7 +180,7 @@ function RecurringModal({ open, recurring, accounts, onClose, onSave }: Recurrin
                     <div className="mt-4">
                         <p className="text-xs font-medium text-slate-400 mb-2">Quick suggestions:</p>
                         <div className="flex flex-wrap gap-1">
-                            {SUGGESTED_RECURRING.slice(0, 5).map((s) => (
+                            {SUGGESTED_RECURRING.map((s) => (
                                 <button
                                     key={s.payee}
                                     type="button"
@@ -252,12 +247,12 @@ function RecurringModal({ open, recurring, accounts, onClose, onSave }: Recurrin
                         <div>
                             <label className="mb-1 block text-xs font-medium text-slate-300">Account</label>
                             <select
-                                value={form.account}
-                                onChange={(e) => setForm((prev) => ({ ...prev, account: e.target.value }))}
+                                value={form.account_id}
+                                onChange={(e) => setForm((prev) => ({ ...prev, account_id: e.target.value }))}
                                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
                             >
                                 {accounts.map((acc) => (
-                                    <option key={acc.name} value={acc.name}>{acc.name}</option>
+                                    <option key={acc.id} value={acc.id}>{acc.name}</option>
                                 ))}
                             </select>
                         </div>
@@ -280,8 +275,8 @@ function RecurringModal({ open, recurring, accounts, onClose, onSave }: Recurrin
                             <label className="mb-1 block text-xs font-medium text-slate-300">Start Date</label>
                             <input
                                 type="date"
-                                value={form.startDate}
-                                onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value, nextDueDate: e.target.value }))}
+                                value={form.start_date}
+                                onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value, next_due_date: e.target.value }))}
                                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
                             />
                         </div>
@@ -289,8 +284,8 @@ function RecurringModal({ open, recurring, accounts, onClose, onSave }: Recurrin
                             <label className="mb-1 block text-xs font-medium text-slate-300">Next Due Date</label>
                             <input
                                 type="date"
-                                value={form.nextDueDate}
-                                onChange={(e) => setForm((prev) => ({ ...prev, nextDueDate: e.target.value }))}
+                                value={form.next_due_date}
+                                onChange={(e) => setForm((prev) => ({ ...prev, next_due_date: e.target.value }))}
                                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
                             />
                         </div>
@@ -340,24 +335,20 @@ export default function RecurringPage() {
         toggleRecurringTransaction,
         markAsPaid,
         skipNextOccurrence,
-        generateDueTransactions,
-    } = useFinance();
+    } = useSupabaseFinance();
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingRecurring, setEditingRecurring] = useState<RecurringTransaction | null>(null);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<RecurringTransaction | null>(null);
 
-    // Auto-generate due transactions on page load
-    useEffect(() => {
-        const generated = generateDueTransactions();
-        if (generated.length > 0) {
-            console.log(`Auto-generated ${generated.length} recurring transactions`);
-        }
-    }, []);
+    const activeRecurring = recurringTransactions.filter((rt) => rt.is_active);
+    const pausedRecurring = recurringTransactions.filter((rt) => !rt.is_active);
 
-    const activeRecurring = recurringTransactions.filter((rt) => rt.isActive);
-    const pausedRecurring = recurringTransactions.filter((rt) => !rt.isActive);
+    const getAccountName = (accountId: string) => {
+        const account = accounts.find((a) => a.id === accountId);
+        return account?.name ?? "Unknown";
+    };
 
     const totalMonthlyExpenses = activeRecurring
         .filter((rt) => rt.type === "expense")
@@ -445,7 +436,7 @@ export default function RecurringPage() {
                                 <h2 className="mb-3 text-sm font-semibold text-slate-300">Active ({activeRecurring.length})</h2>
                                 <div className="space-y-3">
                                     {activeRecurring.map((rt) => {
-                                        const daysUntil = getDaysUntil(rt.nextDueDate);
+                                        const daysUntil = getDaysUntil(rt.next_due_date);
                                         const isDue = daysUntil <= 0;
                                         const isUpcoming = daysUntil > 0 && daysUntil <= 3;
 
@@ -461,7 +452,7 @@ export default function RecurringPage() {
                                                         </div>
                                                         <div>
                                                             <h3 className="text-sm font-semibold text-slate-100">{rt.payee}</h3>
-                                                            <p className="text-xs text-slate-500">{rt.category} • {rt.account}</p>
+                                                            <p className="text-xs text-slate-500">{rt.category} • {getAccountName(rt.account_id)}</p>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
@@ -479,7 +470,7 @@ export default function RecurringPage() {
                                                         ) : isUpcoming ? (
                                                             <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-xs text-sky-400">Due in {daysUntil} day{daysUntil !== 1 ? "s" : ""}</span>
                                                         ) : (
-                                                            <span className="text-xs text-slate-500">Next: {formatDate(rt.nextDueDate)}</span>
+                                                            <span className="text-xs text-slate-500">Next: {formatDate(rt.next_due_date)}</span>
                                                         )}
                                                     </div>
                                                     <div className="flex items-center gap-1">

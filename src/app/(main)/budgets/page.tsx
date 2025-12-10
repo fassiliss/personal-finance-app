@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useFinance, Budget, BudgetInput } from "@/lib/finance-store";
+import { useSupabaseFinance, Budget, BudgetInput } from "@/lib/supabase-finance-store";
 
 function formatCurrency(amount: number) {
     return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -198,7 +198,7 @@ function ConfirmDeleteModal({ open, budgetName, onCancel, onConfirm }: { open: b
 /* ---------- Budgets Page ---------- */
 
 export default function BudgetsPage() {
-    const { budgets, addBudget, updateBudget, deleteBudget, getBudgetProgress } = useFinance();
+    const { budgets, addBudget, updateBudget, deleteBudget, getBudgetProgress } = useSupabaseFinance();
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null);

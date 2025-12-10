@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { useFinance, Transaction, TransactionInput } from "@/lib/finance-store";
+import { useSupabaseFinance, Transaction, TransactionInput } from "@/lib/supabase-finance-store";
 
 function formatCurrency(amount: number) {
     return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -210,7 +210,7 @@ function ImportPreviewModal({ open, preview, errors, onClose, onConfirm }: Impor
 /* ---------- Import/Export Page ---------- */
 
 export default function ImportExportPage() {
-    const { transactions, accounts, budgets, recurringTransactions, addTransaction } = useFinance();
+    const { transactions, accounts, budgets, recurringTransactions, addTransaction } = useSupabaseFinance();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [importPreview, setImportPreview] = useState<TransactionInput[]>([]);
