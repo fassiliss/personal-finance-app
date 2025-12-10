@@ -53,13 +53,14 @@ export default function MainHeader() {
         <header className="sticky top-0 z-40 border-b border-theme bg-theme-secondary/80 backdrop-blur">
             <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
                 {/* Left: logo + app name */}
-                <div className="flex items-center gap-2">
+                {/* Left: logo + app name */}
+                <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme-tertiary text-sm font-semibold" style={{ color: "var(--color-emerald)" }}>$</div>
                     <div className="leading-tight hidden sm:block">
                         <p className="text-sm font-semibold text-theme-primary">Personal Finance</p>
                         <p className="text-[11px] text-theme-muted">Local demo</p>
                     </div>
-                </div>
+                </Link>
 
                 {/* Center: nav (desktop) */}
                 <nav className="hidden gap-1 rounded-full border border-theme bg-theme-primary/80 p-1 text-xs lg:flex">
