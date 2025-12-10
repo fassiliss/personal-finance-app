@@ -149,7 +149,7 @@ type AddTransactionInput = {
     date: string;
     payee: string;
     category: string;
-    account: string;
+    account_id: string;
     amount: number;
     type: TransactionType;
 };
@@ -171,7 +171,7 @@ function AddTransactionModal({
         date: new Date().toISOString().slice(0, 10),
         payee: "",
         category: "",
-        account: accounts[0]?.name ?? "",
+        account_id: accounts[0]?.id ?? "",
         amount: 0,
         type: "expense",
     }));
@@ -185,7 +185,7 @@ function AddTransactionModal({
             date: new Date().toISOString().slice(0, 10),
             payee: "",
             category: "",
-            account: accounts[0]?.name ?? prev.account ?? "",
+            account_id: accounts[0]?.id ?? prev.account_id ?? "",
             amount: 0,
             type: "expense",
         }));
@@ -215,7 +215,7 @@ function AddTransactionModal({
     function handleSubmit(e: FormEvent) {
         e.preventDefault();
         if (!form.payee.trim() || !form.category.trim() || !form.amount) return;
-        if (!form.account) return;
+        if (!form.account_id) return;
 
         onSave(form);
         onClose();
@@ -306,7 +306,7 @@ function AddTransactionModal({
                             </label>
                             <select
                                 name="account"
-                                value={form.account}
+                                value={form.account_id}
                                 onChange={handleChange}
                                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             >
@@ -374,7 +374,7 @@ function EditTransactionModal({
         date: new Date().toISOString().slice(0, 10),
         payee: "",
         category: "",
-        account: accounts[0]?.name ?? "",
+        account_id: accounts[0]?.id ?? "",
         amount: 0,
         type: "expense",
     };
@@ -389,7 +389,7 @@ function EditTransactionModal({
                 date: transaction.date.slice(0, 10),
                 payee: transaction.payee,
                 category: transaction.category,
-                account: transaction.account,
+                account_id: transaction.account_id,
                 amount: transaction.amount,
                 type: transaction.type,
             });
@@ -423,7 +423,7 @@ function EditTransactionModal({
     function handleSubmit(e: FormEvent) {
         e.preventDefault();
         if (!form.payee.trim() || !form.category.trim() || !form.amount) return;
-        if (!form.account) return;
+        if (!form.account_id) return;
 
         onSave(form);
         onClose();
@@ -514,7 +514,7 @@ function EditTransactionModal({
                             </label>
                             <select
                                 name="account"
-                                value={form.account}
+                                value={form.account_id}
                                 onChange={handleChange}
                                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             >
@@ -675,14 +675,14 @@ export default function TransactionsPage() {
     };
 
     const accountOptions = useMemo(
-        () => ["All accounts", ...accounts.map((a) => a.name)],
+        () => ["All accounts", ...account_ids.map((a) => a.name)],
         [accounts],
     );
 
     const filtered = useMemo(() => {
         return transactions.filter((tx) => {
             // Account filter
-            if (accountFilter !== "All accounts" && tx.account !== accountFilter) {
+            if (accountFilter !== "All accounts" && tx.account_id !== accountFilter) {
                 return false;
             }
 
@@ -701,7 +701,7 @@ export default function TransactionsPage() {
             return (
                 tx.payee.toLowerCase().includes(term) ||
                 tx.category.toLowerCase().includes(term) ||
-                tx.account.toLowerCase().includes(term)
+                tx.account_id.toLowerCase().includes(term)
             );
         });
     }, [transactions, accountFilter, typeFilter, search, startDate, endDate]);
@@ -952,7 +952,7 @@ export default function TransactionsPage() {
                                             {tx.category}
                                         </td>
                                         <td className="px-4 py-3 text-slate-300">
-                                            {tx.account}
+                                            {tx.account_id}
                                         </td>
                                         <td
                                             className={`whitespace-nowrap px-4 py-3 text-right font-medium ${
