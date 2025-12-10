@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useFinance } from "@/lib/finance-store";
 import { useTheme } from "@/lib/theme-store";
+import { useAuth } from "@/lib/auth-store";
 
 const navItems = [
     { href: "/", label: "Dashboard" },
@@ -39,6 +40,7 @@ export default function MainHeader() {
     const pathname = usePathname();
     const { accounts, resetAll, getBudgetProgress, getUpcomingRecurring } = useFinance();
     const { theme, toggleTheme } = useTheme();
+    const { user, signOut } = useAuth();
 
     const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
     const budgetProgress = getBudgetProgress();
@@ -53,12 +55,11 @@ export default function MainHeader() {
         <header className="sticky top-0 z-40 border-b border-theme bg-theme-secondary/80 backdrop-blur">
             <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
                 {/* Left: logo + app name */}
-                {/* Left: logo + app name */}
                 <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme-tertiary text-sm font-semibold" style={{ color: "var(--color-emerald)" }}>$</div>
                     <div className="leading-tight hidden sm:block">
                         <p className="text-sm font-semibold text-theme-primary">Personal Finance</p>
-                        <p className="text-[11px] text-theme-muted">Local demo</p>
+                        <p className="text-[11px] text-theme-muted">{user ? user.user_metadata?.name || user.email?.split('@')[0] : "Local demo"}</p>
                     </div>
                 </Link>
 
@@ -121,7 +122,7 @@ export default function MainHeader() {
                     </Link>
                 </nav>
 
-                {/* Right: theme toggle + balance + reset */}
+                {/* Right: theme toggle + balance + reset + user */}
                 <div className="flex items-center gap-2">
                     {/* Theme Toggle */}
                     <button
@@ -151,6 +152,24 @@ export default function MainHeader() {
                     >
                         Reset
                     </button>
+
+                    {/* User Menu */}
+                    {user ? (
+                        <button
+                            type="button"
+                            onClick={() => signOut()}
+                            className="rounded-lg border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-[10px] font-medium text-rose-400 hover:bg-rose-500/20"
+                        >
+                            Logout
+                        </button>
+                    ) : (
+                        <Link
+                            href="/login"
+                            className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-400"
+                        >
+                            Sign in
+                        </Link>
+                    )}
                 </div>
             </div>
         </header>
