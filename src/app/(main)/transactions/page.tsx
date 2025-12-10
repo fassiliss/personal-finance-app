@@ -158,7 +158,7 @@ type AddTransactionModalProps = {
     open: boolean;
     onClose: () => void;
     onSave: (tx: AddTransactionInput) => void;
-    accounts: { name: string }[];
+    accounts: { id: string; name: string }[];
 };
 
 function AddTransactionModal({
@@ -360,7 +360,7 @@ type EditTransactionModalProps = {
     transaction?: Transaction | null;
     onClose: () => void;
     onSave: (input: TransactionInput) => void;
-    accounts: { name: string }[];
+    accounts: { id: string; name: string }[];
 };
 
 function EditTransactionModal({
