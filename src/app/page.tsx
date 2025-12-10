@@ -5,14 +5,23 @@ import React, {
     useMemo,
     useState,
     useEffect,
-    useRef,
     FormEvent,
 } from "react";
 import {
     useFinance,
     Transaction,
     TransactionInput,
+    Account,
 } from "@/lib/finance-store";
+import Link from "next/link";
+
+// Theme-aware style helpers
+const cardStyle = "rounded-xl border border-theme bg-theme-secondary/70 p-4";
+const cardStyleLarge = "rounded-xl border border-theme bg-theme-secondary/70 p-5";
+const inputStyle = "w-full rounded-lg border border-theme-light bg-theme-primary px-3 py-2 text-sm text-theme-primary focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
+const buttonSecondary = "rounded-lg border border-theme-light px-3 py-2 text-xs font-medium text-theme-secondary hover:bg-theme-tertiary";
+const modalOverlay = "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur";
+const modalContent = "w-full max-w-md rounded-xl border border-theme bg-theme-secondary p-6 shadow-xl";
 
 function formatCurrency(amount: number) {
     return amount.toLocaleString("en-US", {
@@ -25,12 +34,7 @@ function formatCurrency(amount: number) {
 
 function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
-        <svg
-            {...props}
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-        >
+        <svg {...props} viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path
                 d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-8.086 8.086-3.328.5.5-3.328 8.086-8.086Z"
                 stroke="currentColor"
@@ -44,12 +48,7 @@ function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
 
 function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
-        <svg
-            {...props}
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-        >
+        <svg {...props} viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path
                 d="M4 6h12"
                 stroke="currentColor"
@@ -75,12 +74,7 @@ function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
 
 function CopyIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
-        <svg
-            {...props}
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-        >
+        <svg {...props} viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <rect
                 x="7"
                 y="5"
@@ -104,13 +98,14 @@ function CopyIcon(props: React.SVGProps<SVGSVGElement>) {
     );
 }
 
-/* ---------- Edit Transaction Modal (Dashboard) ---------- */
+/* ---------- Edit Transaction Modal ---------- */
 
 type EditTransactionModalProps = {
     open: boolean;
     transaction?: Transaction | null;
     onClose: () => void;
     onSave: (input: TransactionInput) => void;
+    accounts: { name: string }[];
 };
 
 function EditTransactionModal({
@@ -118,18 +113,18 @@ function EditTransactionModal({
                                   transaction,
                                   onClose,
                                   onSave,
+                                  accounts,
                               }: EditTransactionModalProps) {
     const initialFormState: TransactionInput = {
         date: new Date().toISOString().slice(0, 10),
         payee: "",
         category: "",
-        account: "Checking",
+        account: accounts[0]?.name ?? "",
         amount: 0,
         type: "expense",
     };
 
     const [form, setForm] = useState<TransactionInput>(initialFormState);
-    const dialogRef = useRef<HTMLDivElement | null>(null);
     const headingId = "dashboard-edit-transaction-title";
 
     useEffect(() => {
@@ -146,20 +141,8 @@ function EditTransactionModal({
         } else {
             setForm(initialFormState);
         }
-    }, [open, transaction]);
-
-    useEffect(() => {
-        if (!open) return;
-
-        function handleKeyDown(e: KeyboardEvent) {
-            if (e.key === "Escape") {
-                onClose();
-            }
-        }
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [open, onClose]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, transaction, accounts]);
 
     if (!open) return null;
 
@@ -185,6 +168,7 @@ function EditTransactionModal({
     function handleSubmit(e: FormEvent) {
         e.preventDefault();
         if (!form.payee.trim() || !form.category.trim() || !form.amount) return;
+        if (!form.account) return;
 
         onSave(form);
         onClose();
@@ -198,7 +182,6 @@ function EditTransactionModal({
             }}
         >
             <div
-                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={headingId}
@@ -280,9 +263,11 @@ function EditTransactionModal({
                                 onChange={handleChange}
                                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             >
-                                <option value="Checking">Checking</option>
-                                <option value="Savings">Savings</option>
-                                <option value="Credit Card">Credit Card</option>
+                                {accounts.map((acc) => (
+                                    <option key={acc.name} value={acc.name}>
+                                        {acc.name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                         <div className="flex-1">
@@ -325,6 +310,7 @@ function EditTransactionModal({
 
 type ConfirmDeleteModalProps = {
     open: boolean;
+    title: string;
     description?: string;
     onCancel: () => void;
     onConfirm: () => void;
@@ -332,6 +318,7 @@ type ConfirmDeleteModalProps = {
 
 function ConfirmDeleteModal({
                                 open,
+                                title,
                                 description,
                                 onCancel,
                                 onConfirm,
@@ -353,11 +340,8 @@ function ConfirmDeleteModal({
                 aria-labelledby={headingId}
                 className="w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-xl"
             >
-                <h2
-                    id={headingId}
-                    className="text-sm font-semibold text-slate-50"
-                >
-                    Delete transaction?
+                <h2 id={headingId} className="text-sm font-semibold text-slate-50">
+                    {title}
                 </h2>
                 <p className="mt-2 text-xs text-slate-400">
                     This action cannot be undone.
@@ -389,6 +373,157 @@ function ConfirmDeleteModal({
     );
 }
 
+/* ---------- Add Account Modal ---------- */
+
+type AddAccountFormState = {
+    name: string;
+    type: "bank" | "credit";
+    startingBalance: number;
+};
+
+type AddAccountModalProps = {
+    open: boolean;
+    onClose: () => void;
+    onSave: (input: AddAccountFormState) => void;
+};
+
+function AddAccountModal({
+                             open,
+                             onClose,
+                             onSave,
+                         }: AddAccountModalProps) {
+    const [form, setForm] = useState<AddAccountFormState>({
+        name: "",
+        type: "bank",
+        startingBalance: 0,
+    });
+
+    const headingId = "dashboard-add-account-title";
+
+    useEffect(() => {
+        if (!open) return;
+        setForm({
+            name: "",
+            type: "bank",
+            startingBalance: 0,
+        });
+    }, [open]);
+
+    if (!open) return null;
+
+    function handleChange(
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    ) {
+        const { name, value } = e.target;
+        if (name === "startingBalance") {
+            setForm((prev) => ({
+                ...prev,
+                startingBalance: Number(value),
+            }));
+        } else {
+            setForm((prev) => ({
+                ...prev,
+                [name]: value,
+            }));
+        }
+    }
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!form.name.trim()) return;
+        onSave(form);
+        onClose();
+    }
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={headingId}
+                className="w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-xl"
+            >
+                <h2 id={headingId} className="text-lg font-semibold text-slate-50">
+                    Add account
+                </h2>
+                <p className="mt-1 text-xs text-slate-400">
+                    Create a local account with an optional starting balance.
+                </p>
+
+                <form
+                    onSubmit={handleSubmit}
+                    className="mt-4 space-y-3 text-sm"
+                >
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-300">
+                            Account name
+                        </label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={form.name}
+                            onChange={handleChange}
+                            placeholder="Brokerage, Cash, Travel fund..."
+                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                    </div>
+
+                    <div className="flex gap-3">
+                        <div className="flex-1">
+                            <label className="mb-1 block text-xs font-medium text-slate-300">
+                                Type
+                            </label>
+                            <select
+                                name="type"
+                                value={form.type}
+                                onChange={handleChange}
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            >
+                                <option value="bank">Bank account</option>
+                                <option value="credit">Credit card</option>
+                            </select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="mb-1 block text-xs font-medium text-slate-300">
+                                Starting balance (USD)
+                            </label>
+                            <input
+                                type="number"
+                                name="startingBalance"
+                                value={form.startingBalance || ""}
+                                onChange={handleChange}
+                                step="0.01"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
+                        >
+                            Save account
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 /* ---------- Dashboard Page ---------- */
 
 type ChartScope = "all" | "month";
@@ -400,6 +535,8 @@ export default function DashboardPage() {
         addTransaction,
         updateTransaction,
         deleteTransaction,
+        addAccount,
+        deleteAccount,
     } = useFinance();
 
     const [editModalOpen, setEditModalOpen] = useState(false);
@@ -407,6 +544,12 @@ export default function DashboardPage() {
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(
+        null,
+    );
+
+    const [accountModalOpen, setAccountModalOpen] = useState(false);
+    const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
+    const [accountToDelete, setAccountToDelete] = useState<Account | null>(
         null,
     );
 
@@ -451,7 +594,7 @@ export default function DashboardPage() {
         const categoryMapAll = new Map<string, number>();
         const categoryMapThisMonth = new Map<string, number>();
 
-        // Net cashflow by month (all-time + this month only)
+        // Net cashflow by month
         type MonthEntry = { label: string; net: number };
         const monthMapAll = new Map<string, MonthEntry>();
         const monthMapThisMonth = new Map<string, MonthEntry>();
@@ -463,7 +606,7 @@ export default function DashboardPage() {
             const inThisMonth =
                 d.getFullYear() === thisYear && d.getMonth() === thisMonth;
 
-            // Category maps (expenses only)
+            // category (expenses only)
             if (tx.type === "expense") {
                 const key = tx.category || "Uncategorized";
                 categoryMapAll.set(
@@ -478,7 +621,7 @@ export default function DashboardPage() {
                 }
             }
 
-            // Monthly net maps (income - expense)
+            // monthly net
             const monthKey = `${d.getFullYear()}-${String(
                 d.getMonth() + 1,
             ).padStart(2, "0")}`;
@@ -486,7 +629,8 @@ export default function DashboardPage() {
                 month: "short",
                 year: "2-digit",
             });
-            const delta = tx.type === "income" ? tx.amount : -tx.amount;
+            const delta =
+                tx.type === "income" ? tx.amount : -tx.amount;
 
             const existingAll = monthMapAll.get(monthKey) ?? {
                 label: monthLabel,
@@ -637,39 +781,73 @@ export default function DashboardPage() {
                     {/* Accounts card */}
                     <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                         <div className="mb-4 flex items-center justify-between gap-2">
-                            <h2 className="text-sm font-semibold text-slate-100">
-                                Accounts
-                            </h2>
-                            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
-                {accounts.length} total
-              </span>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-semibold text-slate-100">
+                                    Accounts
+                                </h2>
+                                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                  {accounts.length} total
+                </span>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setAccountModalOpen(true)}
+                                className="rounded-lg border border-emerald-500/60 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+                            >
+                                + Add account
+                            </button>
                         </div>
 
                         <div className="space-y-3">
-                            {accounts.map((acc) => (
-                                <div
-                                    key={acc.id}
-                                    className="flex items-center justify-between rounded-lg border border-slate-800/70 bg-slate-950/70 px-3 py-3"
-                                >
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-100">
-                                            {acc.name}
-                                        </p>
-                                        <p className="text-xs uppercase tracking-wide text-slate-500">
-                                            {acc.type === "bank" ? "Bank account" : "Credit card"}
-                                        </p>
-                                    </div>
-                                    <p
-                                        className={`text-sm font-semibold ${
-                                            acc.balance < 0
-                                                ? "text-rose-300"
-                                                : "text-emerald-300"
-                                        }`}
+                            {accounts.map((acc) => {
+                                const hasTx = transactions.some(
+                                    (tx) => tx.account === acc.name,
+                                );
+
+                                return (
+                                    <div
+                                        key={acc.id}
+                                        className="flex items-center justify-between rounded-lg border border-slate-800/70 bg-slate-950/70 px-3 py-3 hover:bg-slate-900/70 transition-colors"
                                     >
-                                        {formatCurrency(acc.balance)}
-                                    </p>
-                                </div>
-                            ))}
+                                        <Link href={`/accounts/${acc.id}`} className="flex-1">
+                                            <p className="text-sm font-medium text-slate-100 hover:text-emerald-300">
+                                                {acc.name}
+                                            </p>
+                                            <p className="text-xs uppercase tracking-wide text-slate-500">
+                                                {acc.type === "bank"
+                                                    ? "Bank account"
+                                                    : "Credit card"}
+                                            </p>
+                                        </Link>
+
+                                        <div className="flex items-center gap-2">
+                                            <p
+                                                className={`text-sm font-semibold ${
+                                                    acc.balance < 0
+                                                        ? "text-rose-300"
+                                                        : "text-emerald-300"
+                                                }`}
+                                            >
+                                                {formatCurrency(acc.balance)}
+                                            </p>
+
+                                            {!hasTx && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setAccountToDelete(acc);
+                                                        setAccountDeleteOpen(true);
+                                                    }}
+                                                    className="rounded-lg border border-rose-500/60 px-2 py-1 text-[10px] text-rose-300 hover:bg-rose-500/10"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </section>
 
@@ -957,9 +1135,23 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Modals */}
+            <AddAccountModal
+                open={accountModalOpen}
+                onClose={() => setAccountModalOpen(false)}
+                onSave={(input) => {
+                    addAccount({
+                        name: input.name,
+                        type: input.type,
+                        startingBalance: input.startingBalance,
+                    });
+                }}
+            />
+
             <EditTransactionModal
                 open={editModalOpen}
                 transaction={editingTx ?? undefined}
+                accounts={accounts}
                 onClose={() => setEditModalOpen(false)}
                 onSave={(input) => {
                     if (editingTx) {
@@ -970,6 +1162,7 @@ export default function DashboardPage() {
 
             <ConfirmDeleteModal
                 open={deleteModalOpen}
+                title="Delete transaction?"
                 description={
                     deleteTarget
                         ? `${deleteTarget.payee} · ${formatCurrency(
@@ -987,6 +1180,29 @@ export default function DashboardPage() {
                     }
                     setDeleteTarget(null);
                     setDeleteModalOpen(false);
+                }}
+            />
+
+            <ConfirmDeleteModal
+                open={accountDeleteOpen}
+                title="Delete account?"
+                description={
+                    accountToDelete
+                        ? `${accountToDelete.name} · ${formatCurrency(
+                            accountToDelete.balance,
+                        )}`
+                        : undefined
+                }
+                onCancel={() => {
+                    setAccountDeleteOpen(false);
+                    setAccountToDelete(null);
+                }}
+                onConfirm={() => {
+                    if (accountToDelete) {
+                        deleteAccount(accountToDelete.id);
+                    }
+                    setAccountToDelete(null);
+                    setAccountDeleteOpen(false);
                 }}
             />
         </main>

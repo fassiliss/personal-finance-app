@@ -1,8 +1,8 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import MainHeader from "@/components/MainHeader";
-import { FinanceProvider } from "@/lib/finance-store";
+import AppProviders from "@/components/AppProviders";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -25,14 +25,9 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
-        <body
-            className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-50`}
-        >
-        <FinanceProvider>
-            <MainHeader />
-            {children}
-        </FinanceProvider>
+        <html lang="en" data-theme="dark" suppressHydrationWarning>
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <AppProviders>{children}</AppProviders>
         </body>
         </html>
     );
