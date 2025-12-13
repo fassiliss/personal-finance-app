@@ -3,6 +3,8 @@
 
 import React, { useState, useRef } from "react";
 import { useSupabaseFinance, Transaction, TransactionInput } from "@/lib/supabase-finance-store";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 function formatCurrency(amount: number) {
     return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -218,10 +220,8 @@ export default function ImportExportPage() {
     const [showPreview, setShowPreview] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
 
-    // Get account names for validation
     const accountNames = accounts.map((a) => a.name.toLowerCase());
 
-    // Export transactions to CSV
     function handleExportTransactions() {
         if (transactions.length === 0) {
             alert("No transactions to export.");
@@ -234,17 +234,11 @@ export default function ImportExportPage() {
         setTimeout(() => setSuccessMessage(""), 3000);
     }
 
-    // Export all data as JSON backup
     function handleExportBackup() {
         const backup = {
             exportDate: new Date().toISOString(),
             version: "1.0",
-            data: {
-                accounts,
-                transactions,
-                budgets,
-                recurringTransactions,
-            },
+            data: { accounts, transactions, budgets, recurringTransactions },
         };
         const json = JSON.stringify(backup, null, 2);
         const date = new Date().toISOString().slice(0, 10);
@@ -253,7 +247,147 @@ export default function ImportExportPage() {
         setTimeout(() => setSuccessMessage(""), 3000);
     }
 
-    // Download sample CSV template
+    function handleExportPDF() {
+        const doc = new jsPDF();
+        const date = new Date().toLocaleDateString();
+
+        // Title
+        doc.setFontSize(20);
+        doc.setTextColor(16, 185, 129);
+        doc.text("Personal Finance Report", 14, 20);
+
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Generated on ${date}`, 14, 28);
+
+        // Account Summary
+        doc.setFontSize(14);
+        doc.setTextColor(0);
+        doc.text("Account Summary", 14, 40);
+
+        const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+        const accountData = accounts.map((acc) => [
+            acc.name,
+            acc.type.charAt(0).toUpperCase() + acc.type.slice(1).replace("_", " "),
+            formatCurrency(acc.balance),
+        ]);
+        accountData.push(["", "Total", formatCurrency(totalBalance)]);
+
+        autoTable(doc, {
+            startY: 45,
+            head: [["Account", "Type", "Balance"]],
+            body: accountData,
+            theme: "striped",
+            headStyles: { fillColor: [16, 185, 129] },
+        });
+
+        // Monthly Summary
+        const currentY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        doc.setFontSize(14);
+        doc.text("Monthly Summary", 14, currentY);
+
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+        const monthlyTransactions = transactions.filter(
+            (tx) => tx.date >= startOfMonth && tx.date <= endOfMonth
+        );
+
+        const monthlyIncome = monthlyTransactions
+            .filter((tx) => tx.type === "income")
+            .reduce((sum, tx) => sum + tx.amount, 0);
+        const monthlyExpenses = monthlyTransactions
+            .filter((tx) => tx.type === "expense")
+            .reduce((sum, tx) => sum + tx.amount, 0);
+
+        autoTable(doc, {
+            startY: currentY + 5,
+            head: [["Category", "Amount"]],
+            body: [
+                ["Total Income", formatCurrency(monthlyIncome)],
+                ["Total Expenses", formatCurrency(monthlyExpenses)],
+                ["Net", formatCurrency(monthlyIncome - monthlyExpenses)],
+            ],
+            theme: "striped",
+            headStyles: { fillColor: [16, 185, 129] },
+        });
+
+        // Recent Transactions
+        const transY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+        doc.setFontSize(14);
+        doc.text("Recent Transactions (Last 20)", 14, transY);
+
+        const recentTransactions = transactions.slice(0, 20).map((tx) => [
+            tx.date,
+            tx.payee,
+            tx.category,
+            tx.type === "income" ? formatCurrency(tx.amount) : "",
+            tx.type === "expense" ? formatCurrency(tx.amount) : "",
+        ]);
+
+        autoTable(doc, {
+            startY: transY + 5,
+            head: [["Date", "Payee", "Category", "Income", "Expense"]],
+            body: recentTransactions,
+            theme: "striped",
+            headStyles: { fillColor: [16, 185, 129] },
+        });
+
+        // Budget Progress
+        if (budgets.length > 0) {
+            const budgetY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+
+            if (budgetY < 250) {
+                doc.setFontSize(14);
+                doc.text("Budget Progress", 14, budgetY);
+
+                const budgetData = budgets.map((b) => {
+                    const spent = transactions
+                        .filter(
+                            (tx) =>
+                                tx.type === "expense" &&
+                                tx.category.toLowerCase() === b.category.toLowerCase() &&
+                                tx.date >= startOfMonth &&
+                                tx.date <= endOfMonth
+                        )
+                        .reduce((sum, tx) => sum + tx.amount, 0);
+                    const percentage = b.amount > 0 ? Math.round((spent / b.amount) * 100) : 0;
+                    return [b.category, formatCurrency(b.amount), formatCurrency(spent), `${percentage}%`];
+                });
+
+                autoTable(doc, {
+                    startY: budgetY + 5,
+                    head: [["Category", "Budget", "Spent", "Used"]],
+                    body: budgetData,
+                    theme: "striped",
+                    headStyles: { fillColor: [16, 185, 129] },
+                });
+            }
+        }
+
+        // Footer
+        // Footer
+        const pageCount = doc.internal.pages.length - 1;
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(
+                `Page ${i} of ${pageCount} - Personal Finance App`,
+                doc.internal.pageSize.width / 2,
+                doc.internal.pageSize.height - 10,
+                { align: "center" }
+            );
+        }
+
+        const fileName = `finance-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+        doc.save(fileName);
+        setSuccessMessage("PDF report exported successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+    }
+
     function handleDownloadTemplate() {
         const template = `Date,Payee,Category,Account,Amount,Type
 2024-01-15,Grocery Store,Groceries,Checking,85.50,expense
@@ -263,7 +397,6 @@ export default function ImportExportPage() {
         downloadFile(template, "transaction-template.csv", "text/csv");
     }
 
-    // Handle file selection
     function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -274,12 +407,9 @@ export default function ImportExportPage() {
             parseCSVFile(content);
         };
         reader.readAsText(file);
-
-        // Reset input so same file can be selected again
         e.target.value = "";
     }
 
-    // Parse CSV file content
     function parseCSVFile(content: string) {
         const lines = content.split("\n").filter((line) => line.trim());
         if (lines.length < 2) {
@@ -293,7 +423,6 @@ export default function ImportExportPage() {
         const preview: TransactionInput[] = [];
         const errors: string[] = [];
 
-        // Find column indices
         const dateIdx = headers.findIndex((h) => h === "date");
         const payeeIdx = headers.findIndex((h) => h === "payee" || h === "description" || h === "merchant");
         const categoryIdx = headers.findIndex((h) => h === "category");
@@ -312,7 +441,6 @@ export default function ImportExportPage() {
             return;
         }
 
-        // Parse data rows
         for (let i = 1; i < lines.length; i++) {
             const values = parseCSVLine(lines[i]);
             if (values.length < 3) continue;
@@ -324,27 +452,23 @@ export default function ImportExportPage() {
             const amountStr = values[amountIdx]?.trim().replace(/[$,]/g, "");
             const typeStr = typeIdx !== -1 ? values[typeIdx]?.trim().toLowerCase() : "";
 
-            // Validate date
             const dateMatch = date?.match(/^\d{4}-\d{2}-\d{2}$/);
             if (!dateMatch) {
                 errors.push(`Row ${i + 1}: Invalid date format '${date}' (use YYYY-MM-DD)`);
                 continue;
             }
 
-            // Validate amount
             const amount = Math.abs(parseFloat(amountStr));
             if (isNaN(amount) || amount <= 0) {
                 errors.push(`Row ${i + 1}: Invalid amount '${amountStr}'`);
                 continue;
             }
 
-            // Validate payee
             if (!payee) {
                 errors.push(`Row ${i + 1}: Missing payee`);
                 continue;
             }
 
-            // Determine type
             let type: "income" | "expense" = "expense";
             if (typeStr === "income") {
                 type = "income";
@@ -356,7 +480,6 @@ export default function ImportExportPage() {
                 type = "income";
             }
 
-            // Validate account (warn if not found)
             if (accountIdx !== -1 && !accountNames.includes(account.toLowerCase())) {
                 errors.push(`Row ${i + 1}: Account '${account}' not found, will use as-is`);
             }
@@ -372,11 +495,10 @@ export default function ImportExportPage() {
         }
 
         setImportPreview(preview);
-        setImportErrors(errors.filter((e) => !e.includes("not found"))); // Don't show account warnings as errors
+        setImportErrors(errors.filter((e) => !e.includes("not found")));
         setShowPreview(true);
     }
 
-    // Confirm import
     function handleConfirmImport() {
         let imported = 0;
         for (const tx of importPreview) {
@@ -393,14 +515,12 @@ export default function ImportExportPage() {
     return (
         <main className="min-h-screen bg-slate-950 text-slate-50">
             <div className="mx-auto max-w-4xl px-4 py-8">
-                {/* Header */}
                 <header className="mb-8">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Personal Finance</p>
                     <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Import & Export</h1>
                     <p className="mt-1 text-sm text-slate-400">Export your data or import transactions from CSV files.</p>
                 </header>
 
-                {/* Success message */}
                 {successMessage && (
                     <div className="mb-6 flex items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-4">
                         <CheckCircleIcon className="h-5 w-5 text-emerald-400" />
@@ -413,8 +533,8 @@ export default function ImportExportPage() {
                     <h2 className="text-lg font-semibold text-slate-100">Export Data</h2>
                     <p className="mt-1 text-sm text-slate-400">Download your transactions or create a full backup.</p>
 
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                        {/* Export Transactions */}
+                    <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                        {/* Export CSV */}
                         <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                             <div className="flex items-center gap-3">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
@@ -425,15 +545,38 @@ export default function ImportExportPage() {
                                     <p className="text-xs text-slate-500">{transactions.length} transactions</p>
                                 </div>
                             </div>
-                            <p className="mt-3 text-xs text-slate-400">Export all transactions as a CSV file for use in spreadsheets.</p>
+                            <p className="mt-3 text-xs text-slate-400">Export all transactions as a CSV file.</p>
                             <button
                                 type="button"
                                 onClick={handleExportTransactions}
                                 disabled={transactions.length === 0}
-                                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
                             >
                                 <DownloadIcon className="h-4 w-4" />
                                 Export CSV
+                            </button>
+                        </div>
+
+                        {/* Export PDF */}
+                        <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/10">
+                                    <FileIcon className="h-5 w-5 text-rose-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-100">PDF Report</h3>
+                                    <p className="text-xs text-slate-500">Financial summary</p>
+                                </div>
+                            </div>
+                            <p className="mt-3 text-xs text-slate-400">Generate a PDF report with balances and transactions.</p>
+                            <button
+                                type="button"
+                                onClick={handleExportPDF}
+                                disabled={transactions.length === 0 && accounts.length === 0}
+                                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400 disabled:opacity-50"
+                            >
+                                <DownloadIcon className="h-4 w-4" />
+                                Export PDF
                             </button>
                         </div>
 
@@ -448,7 +591,7 @@ export default function ImportExportPage() {
                                     <p className="text-xs text-slate-500">All data as JSON</p>
                                 </div>
                             </div>
-                            <p className="mt-3 text-xs text-slate-400">Export accounts, transactions, budgets, and recurring transactions.</p>
+                            <p className="mt-3 text-xs text-slate-400">Export all accounts, transactions, budgets.</p>
                             <button
                                 type="button"
                                 onClick={handleExportBackup}
@@ -467,7 +610,6 @@ export default function ImportExportPage() {
                     <p className="mt-1 text-sm text-slate-400">Import transactions from a CSV file.</p>
 
                     <div className="mt-6">
-                        {/* File Upload Area */}
                         <div
                             onClick={() => fileInputRef.current?.click()}
                             className="cursor-pointer rounded-lg border-2 border-dashed border-slate-700 bg-slate-950/50 p-8 text-center hover:border-emerald-500/50 hover:bg-slate-950/70 transition-colors"
@@ -475,16 +617,9 @@ export default function ImportExportPage() {
                             <UploadIcon className="mx-auto h-10 w-10 text-slate-500" />
                             <p className="mt-3 text-sm font-medium text-slate-300">Click to select a CSV file</p>
                             <p className="mt-1 text-xs text-slate-500">or drag and drop</p>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".csv"
-                                onChange={handleFileSelect}
-                                className="hidden"
-                            />
+                            <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileSelect} className="hidden" />
                         </div>
 
-                        {/* CSV Format Info */}
                         <div className="mt-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                             <h3 className="text-sm font-semibold text-slate-200">CSV Format</h3>
                             <p className="mt-1 text-xs text-slate-400">Your CSV file should have these columns:</p>
@@ -501,22 +636,17 @@ export default function ImportExportPage() {
                                     <tr><td className="pr-4 py-1">Date</td><td className="pr-4">Yes</td><td>YYYY-MM-DD</td></tr>
                                     <tr><td className="pr-4 py-1">Payee</td><td className="pr-4">Yes</td><td>Text</td></tr>
                                     <tr><td className="pr-4 py-1">Amount</td><td className="pr-4">Yes</td><td>Number (e.g., 85.50)</td></tr>
-                                    <tr><td className="pr-4 py-1">Category</td><td className="pr-4">No</td><td>Text (defaults to &quot;Uncategorized&quot;)</td></tr>
-                                    <tr><td className="pr-4 py-1">Account</td><td className="pr-4">No</td><td>Text (defaults to first account)</td></tr>
-                                    <tr><td className="pr-4 py-1">Type</td><td className="pr-4">No</td><td>&quot;income&quot; or &quot;expense&quot;</td></tr>
+                                    <tr><td className="pr-4 py-1">Category</td><td className="pr-4">No</td><td>Text</td></tr>
+                                    <tr><td className="pr-4 py-1">Account</td><td className="pr-4">No</td><td>Text</td></tr>
+                                    <tr><td className="pr-4 py-1">Type</td><td className="pr-4">No</td><td>income or expense</td></tr>
                                     </tbody>
                                 </table>
                             </div>
-                            <button
-                                type="button"
-                                onClick={handleDownloadTemplate}
-                                className="mt-4 text-xs text-emerald-400 hover:text-emerald-300 underline"
-                            >
+                            <button type="button" onClick={handleDownloadTemplate} className="mt-4 text-xs text-emerald-400 hover:text-emerald-300 underline">
                                 Download sample template
                             </button>
                         </div>
 
-                        {/* Tips */}
                         <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
                             <div className="flex gap-2">
                                 <AlertCircleIcon className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
@@ -558,7 +688,6 @@ export default function ImportExportPage() {
                 </section>
             </div>
 
-            {/* Import Preview Modal */}
             <ImportPreviewModal
                 open={showPreview}
                 preview={importPreview}

@@ -106,7 +106,14 @@ export default function MainHeader() {
                     </div>
 
                     {user ? (
-                        <button type="button" onClick={() => signOut()} className="rounded-lg border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-[10px] font-medium text-rose-400 hover:bg-rose-500/20">Logout</button>
+                        <div className="flex items-center gap-2">
+                            <Link href="/profile" className="rounded-lg border border-theme-light p-1.5 text-theme-muted hover:bg-theme-tertiary hover:text-theme-primary transition-colors" title="Profile settings">
+                                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                </svg>
+                            </Link>
+                            <button type="button" onClick={() => signOut()} className="rounded-lg border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-[10px] font-medium text-rose-400 hover:bg-rose-500/20">Logout</button>
+                        </div>
                     ) : (
                         <Link href="/login" className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-400">Sign in</Link>
                     )}

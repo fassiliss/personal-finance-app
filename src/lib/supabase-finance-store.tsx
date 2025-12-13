@@ -160,8 +160,45 @@ export function SupabaseFinanceProvider({ children }: { children: React.ReactNod
 
     useEffect(() => {
         refreshData();
-    }, [refreshData]);
 
+        if (!user) return;
+
+        // Set up real-time subscriptions
+        const accountsChannel = supabase
+            .channel('accounts-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'accounts', filter: `user_id=eq.${user.id}` }, () => {
+                refreshData();
+            })
+            .subscribe();
+
+        const transactionsChannel = supabase
+            .channel('transactions-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` }, () => {
+                refreshData();
+            })
+            .subscribe();
+
+        const budgetsChannel = supabase
+            .channel('budgets-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'budgets', filter: `user_id=eq.${user.id}` }, () => {
+                refreshData();
+            })
+            .subscribe();
+
+        const recurringChannel = supabase
+            .channel('recurring-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'recurring_transactions', filter: `user_id=eq.${user.id}` }, () => {
+                refreshData();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(accountsChannel);
+            supabase.removeChannel(transactionsChannel);
+            supabase.removeChannel(budgetsChannel);
+            supabase.removeChannel(recurringChannel);
+        };
+    }, [refreshData, user]);
     async function addAccount(input: AccountInput) {
         if (!user) return;
         console.log("Adding account input:", JSON.stringify(input));

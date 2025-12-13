@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
     title: "Personal Finance App",
     description: "Track your income, expenses, and net worth.",
+    manifest: "/manifest.json",
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: "black-translucent",
+        title: "Finance",
+    },
+};
+
+export const viewport: Viewport = {
+    themeColor: "#10b981",
 };
 
 export default function RootLayout({
@@ -24,8 +34,22 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" data-theme="dark" suppressHydrationWarning>
+        <head>
+            <link rel="apple-touch-icon" href="/icon-192.png" />
+        </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
+        <script
+            dangerouslySetInnerHTML={{
+                __html: `
+                    if ('serviceWorker' in navigator) {
+                        window.addEventListener('load', () => {
+                            navigator.serviceWorker.register('/sw.js');
+                        });
+                    }
+                `,
+            }}
+        />
         </body>
         </html>
     );
