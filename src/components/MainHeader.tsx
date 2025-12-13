@@ -112,7 +112,7 @@ export default function MainHeader() {
                                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                                 </svg>
                             </Link>
-                            <button type="button" onClick={() => signOut()} className="rounded-lg border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-[10px] font-medium text-rose-400 hover:bg-rose-500/20">Logout</button>
+                            <button type="button" onClick={() => signOut()} className="rounded-lg border border-rose-500/50 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/20 active:bg-rose-500/30 min-h-[44px] min-w-[44px]">Logout</button>
                         </div>
                     ) : (
                         <Link href="/login" className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-400">Sign in</Link>
