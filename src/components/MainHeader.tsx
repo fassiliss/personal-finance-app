@@ -57,7 +57,7 @@ export default function MainHeader() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme-tertiary text-sm font-semibold" style={{ color: "var(--color-emerald)" }}>$</div>
                     <div className="leading-tight hidden sm:block">
                         <p className="text-sm font-semibold text-theme-primary">Personal Finance</p>
-                        <p className="text-[11px] text-theme-muted">{user ? user.user_metadata?.name || user.email?.split('@')[0] : "Guest"}</p>
+                        <p className="text-[11px] text-theme-muted">{user ? user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] : "Guest"}</p>
                     </div>
                 </Link>
 
