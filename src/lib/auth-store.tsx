@@ -45,6 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             password,
             options: { data: { name } },
         });
+
+        // Notify admin of new signup
+        if (!error) {
+            fetch("/api/notify-admin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, name }),
+            }).catch(console.error);
+        }
+
         return { error: error?.message ?? null };
     }
 
