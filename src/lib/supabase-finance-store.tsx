@@ -228,7 +228,21 @@ export function SupabaseFinanceProvider({ children }: { children: React.ReactNod
     }
 
     async function updateAccount(id: string, input: Partial<AccountInput>) {
-        await supabase.from("accounts").update(input).eq("id", id);
+        // If starting_balance is being updated, also update balance
+        if (input.starting_balance !== undefined) {
+            const account = accounts.find(a => a.id === id);
+            if (account) {
+                const balanceDiff = input.starting_balance - account.starting_balance;
+                await supabase.from("accounts").update({
+                    ...input,
+                    balance: account.balance + balanceDiff
+                }).eq("id", id);
+            } else {
+                await supabase.from("accounts").update(input).eq("id", id);
+            }
+        } else {
+            await supabase.from("accounts").update(input).eq("id", id);
+        }
         refreshData();
     }
 
