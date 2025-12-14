@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useSupabaseFinance } from "@/lib/supabase-finance-store";
 import { useTheme } from "@/lib/theme-store";
 import { useAuth } from "@/lib/auth-store";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const navItems = [
     { href: "/", label: "Dashboard" },
@@ -40,6 +42,34 @@ export default function MainHeader() {
     const { accounts, getBudgetProgress, getUpcomingRecurring } = useSupabaseFinance();
     const { theme, toggleTheme } = useTheme();
     const { user, signOut } = useAuth();
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [pendingCount, setPendingCount] = useState(0);
+
+    useEffect(() => {
+        async function checkAdmin() {
+            if (!user) return;
+
+            const { data } = await supabase
+                .from("user_approvals")
+                .select("is_admin")
+                .eq("user_id", user.id)
+                .single();
+
+            if (data?.is_admin) {
+                setIsAdmin(true);
+
+                // Get pending approval count
+                const { data: pending } = await supabase
+                    .from("user_approvals")
+                    .select("id")
+                    .eq("approved", false);
+
+                setPendingCount(pending?.length || 0);
+            }
+        }
+
+        checkAdmin();
+    }, [user]);
 
     const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
     const budgetProgress = getBudgetProgress();
@@ -83,6 +113,17 @@ export default function MainHeader() {
                             </Link>
                         );
                     })}
+                    {isAdmin && (
+                        <Link
+                            href="/admin"
+                            className={`relative rounded-full px-3 py-1 transition-colors whitespace-nowrap ${pathname === "/admin" ? "bg-purple-500/20 text-purple-400" : "text-purple-400 hover:text-purple-300"}`}
+                        >
+                            Admin
+                            {pendingCount > 0 && (
+                                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-purple-500 text-[10px] font-bold text-white">{pendingCount}</span>
+                            )}
+                        </Link>
+                    )}
                 </nav>
 
                 <nav className="flex gap-1 lg:hidden overflow-x-auto">
@@ -93,6 +134,14 @@ export default function MainHeader() {
                         );
                     })}
                     <Link href="/import-export" className={`rounded-full px-2 py-1 text-[10px] whitespace-nowrap ${pathname.startsWith("/import-export") ? "bg-theme-tertiary text-theme-primary" : "text-theme-muted"}`}>⬇️</Link>
+                    {isAdmin && (
+                        <Link href="/admin" className={`relative rounded-full px-2 py-1 text-[10px] whitespace-nowrap ${pathname === "/admin" ? "bg-purple-500/20 text-purple-400" : "text-purple-400"}`}>
+                            👑
+                            {pendingCount > 0 && (
+                                <span className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-purple-500 text-[8px] font-bold text-white">{pendingCount}</span>
+                            )}
+                        </Link>
+                    )}
                 </nav>
 
                 <div className="flex items-center gap-2">
