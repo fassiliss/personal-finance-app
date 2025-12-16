@@ -13,6 +13,7 @@ const navItems = [
     { href: "/transactions", label: "Transactions" },
     { href: "/budgets", label: "Budgets" },
     { href: "/recurring", label: "Recurring" },
+    { href: "/receipts", label: "Receipts" },
     { href: "/import-export", label: "Import/Export" },
 ];
 
